@@ -1,14 +1,12 @@
----
-version: "3.5"
-
 networks:
   penpot:
 
 volumes:
-  penpot_postgres_v15:
+  penpot_postgres:
   penpot_assets:
   # penpot_traefik:
   # penpot_minio:
+  penpot_redis:
 
 services:
   ## Traefik service declaration example. Consider using it if you are going to expose
@@ -35,21 +33,17 @@ services:
   #     - "443:443"
 
   penpot-frontend:
-    image: "penpotapp/frontend:latest"
+    image: "docker.io/penpotapp/frontend:latest"
     restart: always
     ports:
       - 9001:80
-
     volumes:
       - penpot_assets:/opt/data/assets
-
     depends_on:
       - penpot-backend
       - penpot-exporter
-
     networks:
       - penpot
-
     labels:
       - "traefik.enable=true"
 
@@ -93,10 +87,10 @@ services:
       ## You can read more about all available flags on:
       ## https://help.penpot.app/technical-guide/configuration/#advanced-configuration
 
-      - PENPOT_FLAGS=enable-registration enable-login-with-password
+      - PENPOT_FLAGS=enable-login-with-password
 
   penpot-backend:
-    image: "penpotapp/backend:latest"
+    image: docker.io/penpotapp/backend:latest
     restart: always
 
     volumes:
@@ -137,7 +131,7 @@ services:
       ## environment variables for the backend here:
       ## https://help.penpot.app/technical-guide/configuration/#advanced-configuration
 
-      - PENPOT_FLAGS=enable-registration enable-login-with-password disable-email-verification enable-smtp enable-prepl-server
+      - PENPOT_FLAGS=enable-registration enable-login-with-password disable-email-verification enable-prepl-server
 
       ## Penpot SECRET KEY. It serves as a master key from which other keys for subsystems
       ## (eg http sessions, or invitations) are derived.
@@ -216,7 +210,7 @@ services:
       - PENPOT_SMTP_SSL=false
 
   penpot-exporter:
-    image: "penpotapp/exporter:latest"
+    image: docker.io/penpotapp/exporter:latest
     restart: always
     networks:
       - penpot
@@ -230,12 +224,12 @@ services:
       - PENPOT_REDIS_URI=redis://penpot-redis/0
 
   penpot-postgres:
-    image: "postgres:15"
+    image: docker.io/library/postgres:16
     restart: always
     stop_signal: SIGINT
 
     volumes:
-      - penpot_postgres_v15:/var/lib/postgresql/data
+      - penpot_postgres:/var/lib/postgresql/data
 
     networks:
       - penpot
@@ -247,17 +241,19 @@ services:
       - POSTGRES_PASSWORD=penpot
 
   penpot-redis:
-    image: redis:7
+    image: docker.io/library/redis:7
     restart: always
     networks:
       - penpot
+    volumes:
+      - penpot_redis:/data
 
   ## A mailcatch service, used as temporal SMTP server. You can access via HTTP to the
   ## port 1080 for read all emails the penpot platform has sent. Should be only used as a
   ## temporal solution meanwhile you don't have a real SMTP provider configured.
 
   penpot-mailcatch:
-    image: sj26/mailcatcher:latest
+    image: docker.io/sj26/mailcatcher:latest
     restart: always
     expose:
       - '1025'
